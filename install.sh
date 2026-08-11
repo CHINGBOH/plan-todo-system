@@ -12,12 +12,13 @@ echo ""
 if [ -d ".plan" ]; then
   echo "[跳过] .plan/ 已存在"
 else
-  mkdir -p .plan
+  mkdir -p .plan/scratch
   cp "$SCRIPT_DIR/templates/overview.md" .plan/
   cp "$SCRIPT_DIR/templates/todo.md" .plan/
+  cp "$SCRIPT_DIR/templates/research.md" .plan/
   cp "$SCRIPT_DIR/templates/decisions.md" .plan/
   cp "$SCRIPT_DIR/templates/errors.md" .plan/
-  echo "[完成] .plan/ 模板已创建"
+  echo "[完成] .plan/ 核心模板已创建（含 research.md 先遣调研排雷模板）"
 fi
 
 # 2. 检测项目类型，给出配置建议

@@ -1,0 +1,325 @@
+#!/usr/bin/env python3
+"""
+Plan-Todo System CLI — The Project Manager & Resource Controller for AI Agents
+Zero external dependencies. Works on Linux, macOS, and Windows with standard Python 3.8+.
+"""
+
+import sys
+import os
+import re
+import argparse
+from pathlib import Path
+from datetime import datetime
+
+PLAN_DIR = Path(".plan")
+OVERVIEW_FILE = PLAN_DIR / "overview.md"
+TODO_FILE = PLAN_DIR / "todo.md"
+RESEARCH_FILE = PLAN_DIR / "research.md"
+DECISIONS_FILE = PLAN_DIR / "decisions.md"
+ERRORS_FILE = PLAN_DIR / "errors.md"
+SCRATCH_DIR = PLAN_DIR / "scratch"
+
+# ANSI Colors
+CYAN = "\033[96m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+RED = "\033[91m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+
+
+def find_template_dir() -> Path:
+    script_dir = Path(__file__).resolve().parent.parent
+    local_tmpl = script_dir / "templates"
+    if local_tmpl.exists():
+        return local_tmpl
+    return script_dir
+
+
+def cmd_init(args):
+    """Initialize .plan/ directory with full PM & Research templates."""
+    goal = args.goal or "New Architectural Feature"
+    if PLAN_DIR.exists() and not args.force:
+        print(f"{YELLOW}⚠️  .plan/ directory already exists. Use --force to re-initialize.{RESET}")
+        return
+
+    PLAN_DIR.mkdir(parents=True, exist_ok=True)
+    SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
+    tmpl_dir = find_template_dir()
+
+    # Overview
+    overview_content = f"""# Strategic Overview (战略指南针)
+
+## 🎯 Goal & Core Intent (目标与核心意图)
+{goal}
+
+## 🚦 Phased Roadmap (阶段拆解)
+- Phase 0: 调研排雷与架构契约确认 (Research & Architecture Spike) `[ ]`
+- Phase 1: 核心数据与底层服务 (Data Layer & Services) `[ ]`
+- Phase 2: 业务组件与交互组装 (Components & UI Integration) `[ ]`
+- Phase 3: 全链路实证验证与复盘 (Empirical Verification & DoD) `[ ]`
+
+## 🚫 Non-Goals & Boundaries (非目标与战略红线)
+- 不做与当前核心交付物无关的扩展
+- 不引入未经验证的重型外部黑盒依赖
+
+## ⚠️ Constraints (硬性约束)
+- 遵循极简高数据墨水比设计与项目 UI 规范
+- 必须通过全量单元测试与 E2E 自动化验证
+
+## 📍 Current Status (当前状态)
+`Phase 0 准备中`
+"""
+    OVERVIEW_FILE.write_text(overview_content, encoding="utf-8")
+
+    # Todo
+    todo_content = f"""# Tactical Task Tracking (战术任务追踪)
+
+## Phase 0: 调研排雷与架构契约确认 (Research & Spike)
+- [ ] 0.1 使用 Context7 / search_web 调研技术选型与最新 API 规范并记录至 `.plan/research.md`
+- [ ] 0.2 在 `scratch/` 进行最小可行性验证 (Spike Test) 验证核心路径
+
+## Phase 1: 核心数据与底层服务 (Data & Service Layer)
+- [ ] 1.1 定义并规范数据结构/API 端点（带严格类型嗅探防 NaN）
+- [ ] 1.2 编写底层服务与数据管道
+
+## Phase 2: 业务组件与交互组装 (Components & UI)
+- [ ] 2.1 封装核心原子组件（支持暗色主题与 Resize 自适应）
+- [ ] 2.2 组装顶层页面视图并注册全局导航路由
+
+## Phase 3: 全链路实证验证与验收 (Empirical Verification)
+- [ ] 3.1 编写并运行 Playwright E2E 自动化测试脚本
+- [ ] 3.2 运行全量静态类型检查与构建回归
+- [ ] 3.3 输出复盘与验证记录 (`walkthrough.md`)
+"""
+    TODO_FILE.write_text(todo_content, encoding="utf-8")
+
+    # Research
+    research_tmpl = tmpl_dir / "research.md"
+    if research_tmpl.exists():
+        RESEARCH_FILE.write_text(research_tmpl.read_text(encoding="utf-8"), encoding="utf-8")
+    else:
+        RESEARCH_FILE.write_text("# Technical Research & De-risking Record\n\n- No research conducted yet.\n", encoding="utf-8")
+
+    # Decisions
+    DECISIONS_FILE.write_text(f"# Architectural Decision Records (ADRs)\n\n## {datetime.now().strftime('%Y-%m-%d')} · Initial Architecture for {goal}\n- Rationale: Formulated structured plan with strict empirical verification.\n", encoding="utf-8")
+
+    # Errors
+    ERRORS_FILE.write_text(f"# Postmortem & Anti-Patterns Prevention\n\n- Initialized {datetime.now().strftime('%Y-%m-%d')}. Anti-patterns and error roots will be logged here to prevent regression.\n", encoding="utf-8")
+
+    print(f"{GREEN}✅ Successfully initialized .plan/ directory for:{RESET} {BOLD}{goal}{RESET}")
+    print(f"  • {CYAN}.plan/overview.md{RESET}  (Strategic Compass)")
+    print(f"  • {CYAN}.plan/todo.md{RESET}      (Tactical Tri-state Tracker)")
+    print(f"  • {CYAN}.plan/research.md{RESET}  (Pre-execution De-risking Toolkit)")
+    print(f"  • {CYAN}.plan/decisions.md{RESET} (Architectural Decisions)")
+    print(f"  • {CYAN}.plan/errors.md{RESET}    (Immunity & Anti-patterns)")
+    print(f"  • {CYAN}.plan/scratch/{RESET}    (Spike Experiment Sandbox)")
+
+
+def cmd_status(args):
+    """Display real-time visual progress bar and active task coordinates."""
+    if not TODO_FILE.exists():
+        print(f"{RED}❌ .plan/todo.md not found. Run 'plan-todo init' first.{RESET}")
+        return
+
+    todo_text = TODO_FILE.read_text(encoding="utf-8")
+    done_items = len(re.findall(r"-\s*\[x\]", todo_text, re.IGNORECASE))
+    in_progress = re.findall(r"-\s*\[~\]\s*(.*)", todo_text)
+    pending_items = re.findall(r"-\s*\[ \]\s*(.*)", todo_text)
+    total_items = done_items + len(in_progress) + len(pending_items)
+
+    pct = int((done_items / total_items) * 100) if total_items > 0 else 0
+    bar_width = 30
+    filled = int(bar_width * pct / 100)
+    bar = f"{GREEN}{'█' * filled}{RESET}{DIM}{'░' * (bar_width - filled)}{RESET}"
+
+    # Read Overview goal
+    goal = "Unknown Goal"
+    if OVERVIEW_FILE.exists():
+        lines = OVERVIEW_FILE.read_text(encoding="utf-8").splitlines()
+        for i, line in enumerate(lines):
+            if "## 🎯 Goal" in line or "## 目标" in line:
+                if i + 1 < len(lines):
+                    goal = lines[i + 1].strip()
+
+    print(f"\n{BOLD}🎯 PLAN & TODO SYSTEM STATUS{RESET}")
+    print(f"  {BOLD}Goal:{RESET} {CYAN}{goal}{RESET}")
+    print(f"  {BOLD}Progress:{RESET} [{bar}] {BOLD}{pct}%{RESET} ({done_items}/{total_items} items done)")
+
+    if in_progress:
+        print(f"\n  {YELLOW}⚡ CURRENT FOCUS [~]:{RESET}")
+        for item in in_progress:
+            print(f"     {YELLOW}▶ {item}{RESET}")
+    elif pending_items:
+        print(f"\n  {CYAN}👉 NEXT ACTIONABLE TASK [ ]:{RESET}")
+        print(f"     {CYAN}• {pending_items[0]}{RESET}")
+    else:
+        print(f"\n  {GREEN}🎉 ALL TASKS 100% COMPLETED!{RESET}")
+
+    # Check research records
+    if RESEARCH_FILE.exists():
+        r_text = RESEARCH_FILE.read_text(encoding="utf-8")
+        topics = re.findall(r"## 🔍 Research Topic:\s*(.*)", r_text)
+        if topics:
+            print(f"\n  {DIM}🔍 Research Topics Conducted: {len(topics)} logged in research.md{RESET}")
+    print()
+
+
+def cmd_lint(args):
+    """Enforce strict engineering constraints on plan files."""
+    errors = []
+    warnings = []
+
+    # 1. Check overview.md length <= 25 lines
+    if OVERVIEW_FILE.exists():
+        lines = OVERVIEW_FILE.read_text(encoding="utf-8").splitlines()
+        non_empty = [l for l in lines if l.strip()]
+        if len(lines) > 25:
+            errors.append(f"overview.md is {len(lines)} lines (exceeds strict ≤25 lines constraint to prevent context drift).")
+    else:
+        errors.append("overview.md is missing!")
+
+    # 2. Check todo.md format
+    if TODO_FILE.exists():
+        todo_text = TODO_FILE.read_text(encoding="utf-8")
+        raw_boxes = re.findall(r"-\s*\[([^\]]*)\]", todo_text)
+        for box in raw_boxes:
+            if box not in [" ", "~", "x", "X"]:
+                errors.append(f"Invalid checkbox state '[{box}]' in todo.md. Only '[ ]', '[~]', '[x]' allowed.")
+    else:
+        errors.append("todo.md is missing!")
+
+    if errors:
+        print(f"{RED}❌ LINT FAILED ({len(errors)} errors):{RESET}")
+        for e in errors:
+            print(f"  • {RED}{e}{RESET}")
+        sys.exit(1)
+    else:
+        print(f"{GREEN}✅ LINT PASSED! All plan files strictly adhere to system constraints.{RESET}")
+
+
+def cmd_research(args):
+    """Scaffold a new research topic entry in research.md and link it in todo.md."""
+    topic = args.topic
+    if not RESEARCH_FILE.exists():
+        RESEARCH_FILE.write_text("# Technical Research & De-risking Record\n\n", encoding="utf-8")
+
+    entry = f"""
+---
+
+## 🔍 Research Topic: {topic}
+- **Timestamp**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+- **Probing Tools Summoned**: Context7 / search_web / AST Grep / Spike Sandbox
+- **Core Questions & Unknowns**:
+  1. What is the official syntax / API contract?
+  2. Are there type mismatches / breaking changes?
+- **Findings & Trade-offs**:
+  - *Option A*:
+  - *Option B*:
+- **Actionable Steps for `todo.md`**:
+  - [ ] Apply verified solution to codebase
+"""
+    with open(RESEARCH_FILE, "a", encoding="utf-8") as f:
+        f.write(entry)
+
+    print(f"{GREEN}✅ Added research entry for '{topic}' to .plan/research.md{RESET}")
+    print(f"👉 Agent should now summon {CYAN}Context7 / search_web{RESET} and record findings before coding.")
+
+
+def cmd_spike(args):
+    """Create an isolated prototype sandbox script in .plan/scratch/."""
+    name = args.name
+    SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
+    ext = ".py" if not name.endswith((".js", ".ts", ".py", ".sql")) else ""
+    target = SCRATCH_DIR / f"{name}{ext}"
+    if target.exists():
+        print(f"{YELLOW}⚠️  Spike file {target} already exists.{RESET}")
+        return
+
+    content = f"""# Isolated Spike Test / Proof of Concept: {name}
+# Created: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+# Purpose: Quick minimal verification without polluting main codebase.
+
+def main():
+    print("Testing spike feasibility for {name}...")
+    # Add minimal reproduction / probing logic here
+    pass
+
+if __name__ == "__main__":
+    main()
+"""
+    target.write_text(content, encoding="utf-8")
+    print(f"{GREEN}✅ Created spike sandbox at:{RESET} {CYAN}{target}{RESET}")
+
+
+def cmd_done(args):
+    """Mark a specific task keyword or index as completed [x]."""
+    if not TODO_FILE.exists():
+        print(f"{RED}❌ .plan/todo.md not found.{RESET}")
+        return
+
+    pattern = args.pattern
+    lines = TODO_FILE.read_text(encoding="utf-8").splitlines()
+    modified = False
+
+    for i, line in enumerate(lines):
+        if pattern.lower() in line.lower() and ("- [ ]" in line or "- [~]" in line):
+            lines[i] = re.sub(r"-\s*\[[ ~]\]", "- [x]", line)
+            print(f"{GREEN}✅ Marked as [x] Done:{RESET} {lines[i].strip()}")
+            modified = True
+            break
+
+    if modified:
+        TODO_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    else:
+        print(f"{YELLOW}⚠️  No matching pending task found for pattern: '{pattern}'{RESET}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Plan-Todo System: Project Manager & Resource Controller CLI")
+    subparsers = parser.add_subparsers(dest="command")
+
+    # init
+    p_init = subparsers.add_parser("init", help="Initialize .plan directory with templates")
+    p_init.add_argument("goal", nargs="?", default="System Engineering Task", help="Overall goal description")
+    p_init.add_argument("-f", "--force", action="store_true", help="Force overwrite")
+
+    # status
+    subparsers.add_parser("status", help="Display visual progress bar and active task")
+
+    # lint
+    subparsers.add_parser("lint", help="Validate plan constraints (<=25 lines overview, valid checkboxes)")
+
+    # research
+    p_res = subparsers.add_parser("research", help="Scaffold a research topic in research.md")
+    p_res.add_argument("topic", help="Research topic or unknown technical area")
+
+    # spike
+    p_spike = subparsers.add_parser("spike", help="Create a sandbox scratch file for minimal POC")
+    p_spike.add_argument("name", help="Name of spike script")
+
+    # done
+    p_done = subparsers.add_parser("done", help="Mark a task as [x] Done")
+    p_done.add_argument("pattern", help="Keyword or ID of the task to mark done")
+
+    args = parser.parse_args()
+
+    if args.command == "init":
+        cmd_init(args)
+    elif args.command == "status":
+        cmd_status(args)
+    elif args.command == "lint":
+        cmd_lint(args)
+    elif args.command == "research":
+        cmd_research(args)
+    elif args.command == "spike":
+        cmd_spike(args)
+    elif args.command == "done":
+        cmd_done(args)
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

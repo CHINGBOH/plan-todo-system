@@ -1,144 +1,79 @@
-# Plan + Todo 任务追踪系统 — 完整方法论
+# Plan + Todo 任务追踪系统 — 完整工程方法论 (Comprehensive Methodology)
 
-> 工具无关。适用于任何 LLM 编码助手。
+> **核心哲学**：文件系统为记忆，Plan 为黑板与指南针，Todo 为坐标与项目经理，调研工具为探路先遣队。适用于所有主流 LLM 编码智能体（Claude Code、Codex、Gemini、Cursor 等）。
 
-## 问题：语义漂移
+---
 
-LLM agent 是无状态的。每个 turn，context 由 harness 重新组装。用户说的"把这个仓库移植过去"是一句话（1 行），但随着 agent 执行，git push 报错、stash 冲突、npm install 日志——这些噪音（50 行）会逐步淹没原始意图。
+## 🎯 一、 解决什么问题：破除大模型语义漂移与物理幻觉
 
-Agent 开始追着报错修，每个"解决当前问题"都是合理行为，但离原始目标越来越远。
+### 1. 语义漂移 (Context Drift)
+LLM 每个 turn 是无状态的，随着工具调用增多，npm install 日志、git 报错、shell 堆栈会快速淹没最初的战略意图。Agent 容易陷入“追着报错盲目打补丁”的陷阱，偏离主线。
 
-## 原理：文件系统当黑板
+### 2. 物理幻觉与先验假设 (Hallucinations vs. Physical Constraints)
+大模型的本质是概率想象，而工程落地的本质是物理确定性（有限的上下文、有限的连接池、严格的数据库类型系统）。**Todo List 就是将抽象意图转化为物理现实的确定性编译器。**
 
-把意图和进度存在文件里，不依赖 agent 的"记忆"（它没有记忆）。
+---
 
-```
-context = 文件系统（持久） + 对话历史（递增噪音）
-```
+## 🏛️ 二、 Todo List 的角色定位：项目经理与资源操盘手
 
-Plan 和 Todo 是结构性内容——LLM 做 context 摘要时大概率保留它们，不会被裁掉。
+Todo List 绝非简单的打勾列表，它具有以下核心职责：
 
-## 工作流（5 步完整版）
+1. **战略锚定 (Strategy Anchor)**：时刻与 `overview.md` 的北极星目标和边界红线咬合，防止形散神散；
+2. **资源调度 (Resource Allocation)**：把控 Token 预算、连接池开销与长耗时任务的异步调度；
+3. **先遣调研 (Research Orchestration)**：手握 4 大调研工具（Context7、Web Search、AST Grep、Spike Sandbox），在开工前消除一切技术不确定性；
+4. **质量门禁 (DoD Gatekeeper)**：严格执行实证验证，未通过测试绝不虚假勾选 `[x]`。
 
-### Step 1: 提取意图（Agent 输出）
+---
 
-用户：把 sql-engine-lab 做成教学平台
+## 📐 三、 任务科学拆解四大原则 (WBS & Decomposition)
 
-Agent 输出（**不要执行**）：
+1. **WBS 100% 穷尽法则 (The 100% Rule)**：子任务集合必须 100% 覆盖父阶段目标，无多余、无遗漏；
+2. **交付物导向 (Deliverable-Oriented)**：以“生成的文件、注册的路由、通过的测试”等客观交付物命名，而非“写代码”等模糊动词；
+3. **粒度黄金分割律 (Atomic DoD)**：单一职责，每个条目对应一次独立的工具调用与断言闭环；
+4. **依赖拓扑序 (Dependency DAG)**：严格遵循 `数据/API -> 组件 -> 页面集成 -> E2E 回归` 因果链编排。
 
-```
-目标：把 sql-engine-lab 从 SQL 执行器升级为完整 SQL 教学练手平台
-阶段：
-  1. 补齐 SQL 示例库（常用查询全覆盖）
-  2. 表设计原则 + 字段规范（含反模式对比）
-  3. 练习模式（看题写 SQL → 判对错）
-边界：不改 DB schema、不加用户系统、不换技术栈
-约束：Express + Monaco + PostgreSQL、单页、无框架
-```
+---
 
-### Step 2: 用户确认（等待）
+## 🚀 四、 四大经典领域模板库 (Domain Archetypes)
 
-Agent 必须等待用户明确说"可以"、"开始"、"go"、"对的"。
-确认前不动任何代码、不创建任何文件。
+| 业务场景 | 通用 Todo 拆解骨架 (Standard Archetype) |
+|---|---|
+| **🆕 1. 全新功能开发 (Feature Development)** | ① 调研与契约定义 $\rightarrow$ ② 核心原子组件/服务 $\rightarrow$ ③ 顶层视图串联 $\rightarrow$ ④ 异常分支防御 $\rightarrow$ ⑤ 自动化 E2E 验证 |
+| **🔄 2. 架构重构/技术迁移 (Refactoring & Migration)** | ① 存量行为基准测试 (Baseline) $\rightarrow$ ② 双轨适配层 $\rightarrow$ ③ 增量替换核心实现 $\rightarrow$ ④ 废弃旧链路 $\rightarrow$ ⑤ 全链路性能回归 |
+| **🐛 3. 复杂缺陷修复 (Bugfix & Root Cause)** | ① 最小失败复现用例 (Repro Test) $\rightarrow$ ② 根因定位与影响面评估 $\rightarrow$ ③ 实施修复补丁 $\rightarrow$ ④ 验证复现用例转绿 $\rightarrow$ ⑤ 补充边界防御测试 |
+| **📊 4. 数据分析与算法 (Analytics & ML)** | ① 数据清洗与特征提取 $\rightarrow$ ② 算法模型训练/推断 $\rightarrow$ ③ 视觉编码与图表渲染 $\rightarrow$ ④ 业务指标评估 (AUC/Lift/CVR) |
 
-### Step 3: 写入 Plan
+---
 
-确认后创建 `.plan/` 目录：
-
-**overview.md**（≤25 行，只含目标/阶段/边界/约束/当前状态）：
-```markdown
-# Plan Overview
-
-## 目标
-sql-engine-lab → SQL 教学练手平台
-
-## 阶段
-1. 补齐 SQL 示例库
-2. 表设计原则 + 字段规范
-3. 练习模式
-
-## 边界
-不改 DB schema、不加用户系统
-
-## 当前状态
-Phase 1 进行中
-```
-
-**todo.md**（从概述拆解为具体步骤，`[ ]` 标记）：
-```markdown
-# Todo
-
-- [~] Phase 1: 补齐 SQL 示例库
-  - [ ] 1.1 调研常用 SQL
-  - [ ] 1.2 前端新增示例
-- [ ] Phase 2: 表设计原则
-- [ ] Phase 3: 练习模式
-```
-
-### Step 4: 执行循环
-
-**每步工具调用前：**
-1. 读 `overview.md` — 现在在哪个阶段？
-2. 读 `todo.md` — 下一步做什么？
-3. 当前动作跟 overview 方向一致吗？不一致 → 停下来问用户
-
-**每步完成后：**
-1. 更新 `todo.md` 对应项 `[ ]` → `[x]`
-2. 有重要决策 → 追加到 `decisions.md`（格式：日期 · 决策 · 为什么）
-3. 遇到错误 → 追加到 `errors.md`（格式：日期 · 错误 · 根因 · 怎么避免）
-
-### Step 5: 完成
-
-全部 `[x]` 后报告。保留 `.plan/` 目录——下个会话可能需要参考。
-
-## 多会话恢复
-
-新会话启动时：
+## 📂 五、 标准文件系统结构
 
 ```
-if .plan/overview.md 存在 and todo.md 有未完成项:
-    1. 读 overview.md → 恢复上下文
-    2. 读 todo.md → 找到断点（第一个 [ ] 或 [~]）
-    3. 读 decisions.md → 了解历史决策
-    4. 读 errors.md → 避免重复踩坑
+.plan/
+├── overview.md        ← 战略指南针，≤25行，北极星目标、阶段、边界与约束
+├── todo.md            ← 战术任务追踪：[ ] 待做 / [~] 进行中 / [x] 已完成
+├── research.md        ← 技术调研与先遣排雷记录（Context7/Search/Spike 成果）
+├── decisions.md       ← 架构决策记录（ADR：日期 · 决策 · 为什么）
+├── errors.md          ← 事故黑匣子与防踩坑记录（根因 · 怎么避免）
+└── scratch/           ← 隔离实验沙盒（用于跑最小 POC 验证）
 ```
 
-## 适用场景判断
+---
 
-### 用 Plan 模式
-- 多步骤功能开发（3+ distinct steps）
-- 跨文件重构
-- 需求模糊，需要先对齐再动手
-- 长任务容易"跑偏"
+## 🔄 六、 标准执行工作流（5 步闭环）
 
-### 不用 Plan 模式
-- 简单问答（"这个函数什么意思"）
-- 单文件小改（"改个变量名"）
-- 纯信息查询（"这个表有多少行"）
+### Step 1: 提取意图与制定 Plan
+Agent 提取目标、边界、约束、成功标准并输出 `implementation_plan.md`。**严禁在此阶段修改任何代码。**
 
-## 真实案例：sql-engine-lab 升级
+### Step 2: 强制人类确认关卡（Mandatory Human Gatekeeper）
+**绝对红线**：必须等待**人类用户在对话框中明确回复（“可以”、“开始”、“go”）**或提出增补修改。**严禁将自动化系统消息视为人类同意！**
 
-**不用 Plan（预测行为）**：
-Agent 说"好的" → 开始改 HTML → 中途想加 CSS → 又去改 server.js → git 报错 → 修 git → 用户纠正 → Agent 又往另一个方向跑
+### Step 3: 初始化 `.plan/`
+运行 `plan-todo init "目标名称"`，一键生成标准骨架。
 
-**用 Plan（实际发生）**：
-1. 用户说需求 → Agent 提取 3 阶段意图 → 用户确认
-2. Phase 1：15 分钟，45→100+ 示例，新增 4 个标签页 ✅
-3. Phase 2：10 分钟，设计面板 6 个专题 ✅
-4. Phase 3：10 分钟，11 道分级练习题 + 即时判对错 ✅
-5. 全程无偏航，一次跑通
+### Step 4: 执行与同步循环
+1. 工具调用前：对照 `overview.md` 确认阶段，对照 `todo.md` 确认当前 `[~]` 焦点；
+2. 遇到未知：运行 `plan-todo research` 调动调研探针查清事实；
+3. 完成每步：运行 `plan-todo done` 更新进度，并在 `decisions.md` / `errors.md` 留痕。
 
-## 模板
-
-见 `templates/` 目录下的 4 个模板文件。复制到项目 `.plan/` 即可。
-
-## 适配各工具的注意事项
-
-| 工具 | 特殊配置 |
-|------|---------|
-| Claude Code | 支持 `TaskCreate`/`TaskUpdate`，可以双轨：Plan + 原生 Task 列表 |
-| Codex | 读文件能力强，建议每步明确说"Read .plan/overview.md" |
-| Gemini | context window 大，overview 可以稍微宽松（30 行） |
-| Hermes | 如果有 hooks，可以配 PreToolUse 自动注入 overview |
-
-核心协议不依赖任何 API feature。文件系统是所有工具的共同语言。
+### Step 5: 实证回归与交付
+运行全量 E2E 自动化测试，验证通过后输出 `walkthrough.md`。
