@@ -1,1 +1,21 @@
 .plan/
+
+# Lean Architecture Anti-Bloat Filters
+__pycache__/
+*.py[cod]
+*$py.class
+*.bak
+*.tmp
+*.orig
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
+*.log
+.venv/
+env/
+node_modules/
+dist/
+build/
+.cache/
